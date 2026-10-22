@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>AnalysixHub Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B1120;--card:#111827;--line:#1f2a44;--blue:#2563EB;--sky:#38BDF8;--text:#e6ebf5;--mute:#93a0b8;--bad:#f87171;--good:#4ade80}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:400 15px/1.55 Inter,system-ui,sans-serif}
+h1,h2,h3{font-family:Sora,Inter,sans-serif;letter-spacing:-.01em}
+h2{font-size:1.35rem;margin-bottom:6px}h3{font-size:1rem;margin:22px 0 8px;color:var(--sky)}
+p.h{color:var(--mute);margin-bottom:18px;max-width:70ch}
+a{color:var(--sky)}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+[hidden]{display:none!important}
+.btn{display:inline-block;padding:9px 16px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--text);font:600 .88rem Inter;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--sky)}.btn.p{background:var(--blue);border-color:var(--blue)}.btn.d{color:var(--bad)}.btn.s{padding:5px 11px;font-size:.8rem}
+.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--text);font:inherit}
+textarea{resize:vertical;min-height:42px}
+label{display:flex;flex-direction:column;gap:5px;font-weight:500;font-size:.88rem}
+label small{color:var(--mute);font-weight:400}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.bar b{font:700 1.05rem Sora}.bar span{color:var(--sky)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:14px 20px 0;max-width:1100px;margin:auto}
+.tabs button[aria-selected=true]{background:var(--blue);border-color:var(--blue)}
+main{max-width:1100px;margin:auto;padding:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0 22px}
+.stat b{display:block;font:700 1.8rem Sora}.stat span{color:var(--mute);font-size:.85rem}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:500;font-size:.85rem}
+.w{overflow-x:auto}
+.thumb{width:56px;height:40px;border-radius:6px;object-fit:cover;background:var(--line);display:block}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fld{margin-bottom:12px}.fld .m{display:flex;justify-content:space-between;color:var(--mute);font-size:.78rem;margin-bottom:4px}
+.fld .m button{background:none;border:0;color:var(--sky);cursor:pointer;font-size:.78rem}
+.changed textarea{border-color:var(--sky)}
+.savebar{position:sticky;bottom:0;background:var(--bg);padding:12px 0;border-top:1px solid var(--line);margin-top:16px}
+.lg{height:56px;width:auto;max-width:160px;object-fit:contain;background:#0B1120;border:1px solid var(--line);border-radius:8px;padding:6px}
+.photo{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid #f97316;background:#fff}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card);border:1px solid var(--sky);padding:10px 18px;border-radius:10px;z-index:99;display:none}
+#toast.bad{border-color:var(--bad)}
+.login{max-width:340px;margin:14vh auto;padding:0 20px;display:grid;gap:14px}
+#lerr{color:var(--bad);min-height:1.3em}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login" class="login" hidden>
+ <h1>AnalysixHub admin</h1>
+ <form id="lf" style="display:grid;gap:14px">
+  <label>Username<input id="u" autocomplete="username" required></label>
+  <label>Password<input id="pw" type="password" autocomplete="current-password" required></label>
+  <button class="btn p" type="submit">Sign in</button>
+  <div id="lerr" role="alert"></div>
+ </form>
+ <a href="/">Back to website</a>
+ <small style="color:var(--mute)">Admin page version 3</small>
+</div>
+
+<div id="app" hidden>
+ <div class="bar"><b>Analysix<span>Hub</span> Admin</b><div class="row"><a class="btn s" href="/" target="_blank">View website</a><button class="btn s" id="out">Sign out</button></div></div>
+ <div class="tabs" role="tablist" id="tabs"></div>
+ <main id="view"></main>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+const $=(s,r)=>(r||document).querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SEL='header ul a,main h1,main h2,main h3,main p,main li,main a.btn,footer p,footer b,footer .end'; /* must match index.html */
+const SECTIONS={home:'Home (top of page)',about:'About',services:'Services',portfolio:'Portfolio',why:'Why choose us',process:'Work process',enquiry:'Enquiry form',contact:'Contact',footer:'Footer',header:'Menu'};
+const TABS=[['overview','Overview'],['text','Page text'],['projects','Projects'],['enquiries','Enquiries'],['settings','Contact, social, photo and logo'],['security','Security and backup']];
+let C={text:{},settings:{}},P=[],E=[],F=[],tab='overview',editing=null,pendingImg='';
+
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.className=bad?'bad':'';t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',3200)}
+async function api(path,o){o=o||{};o.credentials='same-origin';if(o.body&&typeof o.body!=='string'){o.body=JSON.stringify(o.body);o.headers={'Content-Type':'application/json'}}
+ const r=await fetch(path,o);if(r.status===401){showLogin();throw new Error('Please sign in.')}
+ const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Request failed');return j}
+const guard=fn=>async(...a)=>{try{await fn(...a)}catch(e){toast(e.message,true)}};
+function readFile(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)})}
+function loadImg(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);ok(i)};i.onerror=()=>no(new Error('That file is not a valid image.'));i.src=u})}
+/* Shrinks the picture in your browser first, so it fits the free database. kind: photo, logo or project */
+async function upload(f,kind){
+ const img=await loadImg(f),png=kind==='logo',max=kind==='project'?1400:kind==='photo'?600:700;
+ let sc=Math.min(1,max/Math.max(img.width,img.height)),q=.85,url='';
+ for(let n=0;n<6;n++){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*sc));c.height=Math.max(1,Math.round(img.height*sc));
+  const x=c.getContext('2d');if(!png){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height)}x.drawImage(img,0,0,c.width,c.height);
+  url=c.toDataURL(png?'image/png':'image/jpeg',q);if(url.length<1500000)break;sc*=.75;q=Math.max(.5,q-.1)}
+ if(url.length>=1500000)throw new Error('This image is too big. Please choose a smaller one.');
+ return (await api('/api/admin/upload',{method:'POST',body:{data:url}})).url}
+
+/* ---------- login ---------- */
+function showLogin(){$('#app').hidden=true;$('#login').hidden=false;$('#u').focus()}
+$('#lf').onsubmit=async e=>{e.preventDefault();$('#lerr').textContent='';
+ const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#u').value,password:$('#pw').value})});
+ const j=await r.json().catch(()=>null);
+ if(!r.ok||!j||!j.ok){$('#lerr').textContent=(j&&j.error)||'The server part of the website is not answering (error '+r.status+'). The functions folder may not have been uploaded or deployed.';return}
+ $('#pw').value='';start(true)};
+$('#out').onclick=async()=>{await fetch('/api/logout',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:'{}'});showLogin()};
+
+async function start(fromLogin){
+ const say=m=>{showLogin();if(fromLogin)$('#lerr').textContent=m};
+ let mr;try{mr=await fetch('/api/admin/me',{credentials:'same-origin'})}catch(e){return say('Could not reach the server: '+e.message)}
+ if(!mr.ok){let w='';try{w=(await mr.json()).error||''}catch(e){}return say('Signed in, but the session check failed (error '+mr.status+(w?': '+w:'')+'). Make sure cookies are allowed for this site, then try again.')}
+ try{
+  [C,P,E]=await Promise.all([fetch('/api/content').then(r=>r.json()),api('/api/admin/projects'),api('/api/admin/enquiries')]);
+  C.text=C.text||{};C.settings=C.settings||{};
+  const d=new DOMParser().parseFromString(await (await fetch('/')).text(),'text/html');
+  F=[...d.querySelectorAll(SEL)].filter(e=>!e.children.length).map((e,i)=>{const s=e.closest('section,footer,header');return{k:'t'+i,tag:e.tagName.toLowerCase(),sec:s?(s.id||s.tagName.toLowerCase()):'',def:e.textContent.trim()}});
+  $('#login').hidden=true;$('#app').hidden=false;
+  $('#tabs').innerHTML=TABS.map(t=>`<button class="btn s" role="tab" data-t="${t[0]}">${t[1]}</button>`).join('');
+  $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.t;render()}};
+  render();
+ }catch(e){console.error(e);say('Signed in, but the page could not load your data: '+e.message)}
+}
+function render(){
+ $('#view').onchange=null;$('#view').onclick=null;
+ document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===tab));
+ ({overview,text,projects,enquiries,settings,security})[tab]();
+}
+
+/* ---------- overview ---------- */
+function overview(){
+ const n=c=>P.filter(p=>p.c===c).length,nw=E.filter(e=>e.status==='New').length;
+ $('#view').innerHTML=`<h2>Overview</h2><p class="h">Everything you change here goes live on the website straight away.</p>
+ <div class="stats">${[['Total projects',P.length],['Published',P.filter(p=>p.pub).length],['Data Science',n('Data')],['Graphic Design',n('Graphic')],['Web Design',n('Web')],['New enquiries',nw]].map(s=>`<div class="card stat"><b>${s[1]}</b><span>${s[0]}</span></div>`).join('')}</div>
+ <div class="card"><h3 style="margin-top:0">What you can do here</h3><p class="h" style="margin:0">Page text changes any heading, paragraph or button on the site. Projects adds, edits, hides and deletes portfolio items with images. Contact, social, photo and logo updates your email, WhatsApp, social links, profile picture and logos. Enquiries shows messages from the form.</p></div>`;
+}
+
+/* ---------- page text ---------- */
+function text(){
+ const groups={};F.forEach(f=>{(groups[f.sec]=groups[f.sec]||[]).push(f)});
+ const html=Object.keys(SECTIONS).filter(s=>groups[s]).map(s=>`<h3>${SECTIONS[s]}</h3>`+groups[s].map(f=>{
+  const v=f.k in C.text?C.text[f.k]:f.def;
+  return `<div class="fld${v!==f.def?' changed':''}" data-k="${f.k}"><div class="m"><span>${f.tag==='h1'||f.tag==='h2'||f.tag==='h3'?'Heading':f.tag==='a'?'Button or link':f.tag==='li'?'List item':'Text'}</span><button type="button" data-reset>Reset to original</button></div><textarea rows="${Math.min(6,Math.max(1,Math.ceil(v.length/90)))}">${esc(v)}</textarea></div>`}).join('')).join('');
+ $('#view').innerHTML=`<h2>Page text</h2><p class="h">Edit any wording on the website. Fields you change are outlined in blue.</p>
+ <input id="q" placeholder="Search text" aria-label="Search text" style="margin-bottom:6px"><div id="flds">${html}</div>
+ <div class="savebar"><button class="btn p" id="save">Save text changes</button></div>`;
+ const box=$('#flds');
+ box.oninput=e=>{const f=F.find(x=>x.k===e.target.closest('.fld').dataset.k);e.target.closest('.fld').classList.toggle('changed',e.target.value.trim()!==f.def)};
+ box.onclick=e=>{if(e.target.matches('[data-reset]')){const w=e.target.closest('.fld'),f=F.find(x=>x.k===w.dataset.k);$('textarea',w).value=f.def;w.classList.remove('changed')}};
+ $('#q').oninput=e=>{const q=e.target.value.toLowerCase();box.querySelectorAll('.fld').forEach(w=>w.hidden=q&&!$('textarea',w).value.toLowerCase().includes(q))};
+ $('#save').onclick=guard(async()=>{const t={};box.querySelectorAll('.fld').forEach(w=>{const f=F.find(x=>x.k===w.dataset.k),v=$('textarea',w).value.trim();if(v!==f.def)t[f.k]=v});
+  C=await api('/api/admin/content',{method:'PUT',body:{text:t}});toast('Saved. The website now shows your changes.')});
+}
+
+/* ---------- projects ---------- */
+const CATS={Data:'Data Science',Graphic:'Graphic Design',Web:'Web Design'};
+const saveP=guard(async()=>{P=(await api('/api/admin/projects',{method:'PUT',body:{projects:P}})).projects;projects()});
+function projects(){
+ const p=editing!==null?(P[editing]||{}):{};
+ $('#view').innerHTML=`<h2>Projects</h2><p class="h">Add, change, hide or delete the work shown in the portfolio.</p>
+ <form id="pf" class="card grid"><h3 class="full" style="margin:0">${editing!==null?'Edit project':'Add a project'}</h3>
+  <label>Title<input name="t" required value="${esc(p.t)}"></label>
+  <label>Category<select name="c">${Object.keys(CATS).map(k=>`<option value="${k}"${p.c===k?' selected':''}>${CATS[k]}</option>`).join('')}</select></label>
+  <label class="full">Description<textarea name="d" rows="2">${esc(p.d)}</textarea></label>
+  <label>Tools used<input name="tools" value="${esc(p.tools)}"></label>
+  <label>Outcome or result<input name="out" value="${esc(p.out)}"></label>
+  <label>Project link <small>Optional, starts with https://</small><input name="link" type="url" value="${esc(p.link)}"></label>
+  <label>Preview image <small>Any size. It is shrunk automatically.</small><input type="file" id="pimg" accept="image/*"></label>
+  <div class="full row"><img class="thumb" id="pth" alt="" ${(pendingImg||p.img)?'src="'+esc(pendingImg||p.img)+'"':'hidden'}><label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" name="pub" style="width:auto"${p.pub!==false?' checked':''}>Published on the website</label></div>
+  <div class="full row"><button class="btn p" type="submit">${editing!==null?'Save project':'Add project'}</button>${editing!==null?'<button class="btn" type="button" id="cx">Cancel</button>':''}</div></form>
+ <h3>All projects</h3><div class="card w"><table><tr><th></th><th>Title</th><th>Category</th><th>Status</th><th>Actions</th></tr>${P.map((x,i)=>`<tr><td>${x.img?`<img class="thumb" src="${esc(x.img)}" alt="">`:''}</td><td>${esc(x.t)}</td><td>${CATS[x.c]}</td><td>${x.pub?'Published':'Hidden'}</td><td class="row"><button class="btn s" data-a="up" data-i="${i}" aria-label="Move up">Up</button><button class="btn s" data-a="dn" data-i="${i}" aria-label="Move down">Down</button><button class="btn s" data-a="pub" data-i="${i}">${x.pub?'Hide':'Publish'}</button><button class="btn s" data-a="ed" data-i="${i}">Edit</button><button class="btn s d" data-a="del" data-i="${i}">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No projects yet.</td></tr>'}</table></div>`;
+ $('#pimg').onchange=guard(async e=>{const f=e.target.files[0];if(!f)return;pendingImg=await upload(f,'project');$('#pth').src=pendingImg;$('#pth').hidden=false;toast('Image uploaded. Click Save to keep it.')});
+ if($('#cx'))$('#cx').onclick=()=>{editing=null;pendingImg='';projects()};
+ $('#pf').onsubmit=e=>{e.preventDefault();const f=e.target.elements,o={id:p.id,t:f.t.value,c:f.c.value,d:f.d.value,tools:f.tools.value,out:f.out.value,link:f.link.value,img:pendingImg||p.img||'',pub:f.pub.checked};
+  if(editing!==null)P[editing]=o;else P.unshift(o);editing=null;pendingImg='';saveP()};
+ $('#view table').onclick=e=>{const b=e.target.closest('button');if(!b)return;const i=+b.dataset.i,a=b.dataset.a;
+  if(a==='ed'){editing=i;pendingImg='';projects();scrollTo(0,0)}
+  else if(a==='del'){if(confirm('Delete this project?')){P.splice(i,1);saveP()}}
+  else if(a==='pub'){P[i].pub=!P[i].pub;saveP()}
+  else if(a==='up'&&i>0){[P[i-1],P[i]]=[P[i],P[i-1]];saveP()}
+  else if(a==='dn'&&i<P.length-1){[P[i+1],P[i]]=[P[i],P[i+1]];saveP()}};
+}
+
+/* ---------- enquiries ---------- */
+function enquiries(){
+ $('#view').innerHTML=`<h2>Enquiries</h2><p class="h">Messages sent from the website form.</p><div class="card w"><table><tr><th>Client</th><th>Request</th><th>Status</th><th></th></tr>${E.map(x=>{const wa=String(x.phone||'').replace(/\D/g,'').replace(/^0/,'234');return `<tr><td><b>${esc(x.name)}</b><br><a href="mailto:${esc(x.email)}">${esc(x.email)}</a>${x.phone?`<br><a href="https://wa.me/${wa}" target="_blank" rel="noopener">${esc(x.phone)}</a>`:''}${x.company?'<br>'+esc(x.company):''}<br><small style="color:var(--mute)">${new Date(x.date).toLocaleString()}</small></td><td><b>${esc(x.service)}</b>, budget ${esc(x.budget||'not given')}${x.deadline?', deadline '+esc(x.deadline):''}<br>${esc(x.desc)}${x.source?'<br><small style="color:var(--mute)">Heard about us: '+esc(x.source)+'</small>':''}</td><td><select data-st="${x.id}" aria-label="Status">${['New','In progress','Completed'].map(s=>`<option${s===x.status?' selected':''}>${s}</option>`).join('')}</select></td><td><button class="btn s d" data-del="${x.id}">Delete</button></td></tr>`}).join('')||'<tr><td colspan="4">No enquiries yet. New messages will appear here.</td></tr>'}</table></div>`;
+ $('#view').onchange=guard(async e=>{if(e.target.dataset.st){await api('/api/admin/enquiries/'+e.target.dataset.st,{method:'PATCH',body:{status:e.target.value}});E.find(x=>x.id===e.target.dataset.st).status=e.target.value;toast('Status updated.')}});
+ $('#view').onclick=guard(async e=>{const id=e.target.dataset.del;if(id&&confirm('Delete this enquiry?')){await api('/api/admin/enquiries/'+id,{method:'DELETE'});E=E.filter(x=>x.id!==id);enquiries()}});
+}
+
+/* ---------- contact, social, photo ---------- */
+function settings(){
+ const s=C.settings,v=k=>esc(s[k]||'');
+ const img=(k,label,hint,cls)=>`<div class="full row"><img class="${cls}" id="im-${k}" alt="" src="${esc(s[k]||'')}" ${s[k]?'':'hidden'}><label>${label} <small>${hint}</small><input type="file" data-up="${k}" accept="image/*"></label></div>`;
+ $('#view').innerHTML=`<h2>Contact, social, photo and logo</h2><p class="h">Leave a social link empty to hide it. Leave an image empty to keep the one already on the website.</p>
+ <form id="sf" class="card grid">
+  ${img('photo','Profile photo','Shown top right of the menu bar. Square images work best.','photo')}
+  ${img('logoIcon','Logo icon','The small symbol next to the name in the menu bar and the browser tab. Transparent PNG works best.','lg')}
+  ${img('logo','Full logo','Shown in the footer. Transparent PNG works best.','lg')}
+  <label>Email<input name="email" type="email" value="${v('email')}" placeholder="olaniyandolapo2021@gmail.com"></label>
+  <label>WhatsApp number<input name="whatsapp" value="${v('whatsapp')}" placeholder="08139298448"></label>
+  <label>Instagram link<input name="instagram" type="url" value="${v('instagram')}" placeholder="https://www.instagram.com/dolapo36599/"></label>
+  <label>TikTok link<input name="tiktok" type="url" value="${v('tiktok')}" placeholder="https://vm.tiktok.com/..."></label>
+  <label>Facebook link<input name="facebook" type="url" value="${v('facebook')}" placeholder="https://www.facebook.com/..."></label>
+  <label>LinkedIn link<input name="linkedin" type="url" value="${v('linkedin')}" placeholder="https://www.linkedin.com/in/..."></label>
+  <div class="full"><button class="btn p" type="submit">Save changes</button></div></form>`;
+ const cur={photo:s.photo||'',logo:s.logo||'',logoIcon:s.logoIcon||''};
+ $('#sf').addEventListener('change',guard(async e=>{const k=e.target.dataset.up,f=e.target.files&&e.target.files[0];if(!k||!f)return;cur[k]=await upload(f,k==='photo'?'photo':'logo');const im=$('#im-'+k);im.src=cur[k];im.hidden=false;toast('Image uploaded. Click Save changes to keep it.')}));
+ $('#sf').onsubmit=guard(async e=>{e.preventDefault();const f=e.target.elements,o=Object.assign({},cur);['email','whatsapp','instagram','tiktok','facebook','linkedin'].forEach(k=>o[k]=f[k].value.trim());
+  C=await api('/api/admin/content',{method:'PUT',body:{settings:o}});toast('Saved. The website now shows your changes.')});
+}
+
+/* ---------- security and backup ---------- */
+function security(){
+ $('#view').innerHTML=`<h2>Security and backup</h2><p class="h">Change your password and keep a copy of your content.</p>
+ <form id="pwf" class="card grid" style="max-width:520px"><h3 class="full" style="margin:0">Change password</h3>
+  <label class="full">Current password<input name="cur" type="password" autocomplete="current-password" required></label>
+  <label class="full">New password <small>At least 10 characters</small><input name="nx" type="password" autocomplete="new-password" minlength="10" required></label>
+  <div class="full"><button class="btn p" type="submit">Change password</button></div></form>
+ <div class="card" style="margin-top:18px;max-width:520px"><h3 style="margin-top:0">Backup</h3><p class="h">Download your text, projects, settings and enquiries as one file. Pictures are kept in your database but are not inside the backup file.</p>
+  <div class="row"><button class="btn" id="bk">Download backup</button><label class="btn" style="flex-direction:row">Restore from backup<input type="file" id="rs" accept=".json" hidden></label></div></div>`;
+ $('#pwf').onsubmit=guard(async e=>{e.preventDefault();const f=e.target.elements;await api('/api/admin/password',{method:'POST',body:{current:f.cur.value,next:f.nx.value}});e.target.reset();toast('Password changed.')});
+ $('#bk').onclick=guard(async()=>{const j=await api('/api/admin/backup');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(j,null,2)],{type:'application/json'}));a.download='analysixhub-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click()});
+ $('#rs').onchange=guard(async e=>{const f=e.target.files[0];if(!f||!confirm('Replace all current content with this backup?'))return;await api('/api/admin/restore',{method:'POST',body:JSON.parse(await f.text())});toast('Backup restored.');start()});
+}
+start();
+</script>
+</body>
+</html>
